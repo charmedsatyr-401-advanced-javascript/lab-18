@@ -1,6 +1,6 @@
 {
   "source": {
-    "include": ["./app.js", "./lib", "logger.js", "server.js"]
+    "include": ["./app/app.js", "./lib", "./logger/logger.js", "./server/server.js"]
   },
   "opts": {
     "destination": "./docs",
