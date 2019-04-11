@@ -1,6 +1,6 @@
 'use strict';
 
-const alterFile = require('../app/app.js');
+const alterFile = require('../../app/app.js');
 
 jest.mock('fs');
 
