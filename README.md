@@ -13,11 +13,13 @@
 * [jsdoc](./docs/)
 
 ### Modules
-`./app.js`
+`./index.js`
 
-`./logger.js`
+`./app/app.js`
 
-`./server.js`
+`./logger/logger.js`
+
+`./server/server.js`
 
 `./lib/read.js`
 
@@ -26,48 +28,27 @@
 `./lib/write.js`
 
 -----
+#### `./index.js`
+This is the entry point of the application that accepts the application's command line arguments for the `alterFile` function.
 
-#### `.src/app.js`
+#### `./app/app.js`
 ##### Exported Values and Methods
-This is the entry point of the application that accepts the application's command line arguments. On start, it connects to the TCP client, firing `handleConnect`, and executes `alterFile`. It invokes `handleClose` when its connection to the server is closed.
-
 * `alterFile(file)` -> `undefined`
-* This function takes a filepath and uses the helper functions `read`, `uppercase`, and `write` to capitalize the letters in the file. It emits an object for the TCP server and closes the app's connection to the server after a successful `save` or `error`.
-
-* `handleConnect()` -> logs to the console
-* `handleClose()` -> logs to the console
+* This function takes a filepath and uses the helper functions `read`, `uppercase`, and `write` to capitalize the letters in the file. It emits `file-save` or `file-error` messages to the Socket.io server depending upon the results of its operation and disconnects from the server thereafter.
 
 -----
 
-#### `./src/logger.js`
+#### `./logger/logger.js`
 ##### Exported Values and Methods
-This module provides event listeners and handling functions that log to the console.
-* `handleConnect()` -> logs to the console
-* `handleClose()` -> logs to the console
-* `handleData(buffer)` -> logs to the console, or `undefined`
-
-`handleData` parses a received buffer to JSON (after a validation step) and logs an appropriate message based on an expected object's data. This function expects a parsed JSON argument to have the format:
-
-`event`: `save` or `error`
-`payload`: file name
-`message`: `String`
-
------
-
-#### `./src/logger.js`
-##### Exported Values and Methods
-This module creates a server connection and logs when clients connect or disconnect. It assigns a random `id` to each connected client in the socket pool.
-
-If the server receives data, it invokes the `dispatchEvent` function with the received buffer.
-
-* `dispatchEvent(buffer)` -> logs or a TCP broadcast
-The `dispatchEvent` function parses the received buffer and evaluates it for an `event` key with the value `save` or `error`. It logs any such objects and broadcasts them to the pool of connected clients. If the input cannot be validated, the function logs it.
+This module provides Socket.io event listeners and handling functions that log to the console.
+* `handleSave(payload)` -> logs to the console when the server emits a `file-save` message.
+* `handleError(payload)` -> logs to the console when the server emits a `file-error` message.
 
 -----
 
 #### `./lib/read.js`
 ##### Exported Values and Methods
-This module reads a file and returns a Promise. It emits events as appropriate.
+This module reads a file and returns a Promise that contains a file buffer.
 * `read(file)` -> `Promise` -> `buffer`
 
 -----
@@ -75,26 +56,26 @@ This module reads a file and returns a Promise. It emits events as appropriate.
 #### `./lib/uppercase.js`
 ##### Exported Values and Methods
 * `uppercase(data)` -> modified `data`
-This module takes a readable buffer or other input, converts it to a string, and capitalizes its letters. It emits events as appropriate.
+This module takes a readable buffer or other input, converts it to a string, and capitalizes its letters. It returns a file buffer.
 
 -----
 
 #### `./lib/write.js`
 ##### Exported Values and Methods
 * `write(file, text)` -> `Promise` -> side effect
-This module reads a file and returns a Promise. It writes a `file` with the given `text` as a side effect. It emits events as appropriate.
-
+This module reads a file and returns a Promise. It writes a `file` with the given `text` as a side effect.
 -----
 
 ### Setup
-#### `.env` 
-* N/A
+#### `.env`
+* HOST (if not provided, the value `127.0.0.1` will be used)
+* PORT (if not provided, the value `3000` will be used)
 
 #### Running the app
 * Run the following commands in order on separate command line instances:
-  * `node server.js`
-  * `node logger.js`
-  * `node app.js <fileName>`, where `<fileName>` is the path to a readable file. 
+  * `node ./server/server.js` - to start the Socket.io server
+  * `node ./logger/logger.js` - to start the Socket.io client logger
+  * `node index.js <fileName>` - to run the appln `<fileName>`, where `<fileName>` is the path to a readable file. 
 
 #### Tests
 * How do you run tests?
@@ -103,60 +84,34 @@ This module reads a file and returns a Promise. It writes a `file` with the give
   * `npm run lint`
 
 * What assertions were made?
-  * `app.test.js`
-    * `handleConnect` function
+  * `./app/app.js`
+    * `alterFile` function
+      ✓ should not throw an error
 
-      ✓ should log to the console once (18ms)
-    * `handleClose` function
-
+  * `./logger/logger.js`
+    * `handleSave` function
       ✓ should log to the console once (1ms)
-  * `logger.test.js`
-    * `handleData` function
+    * `handleError` function
+      ✓ should error log to the console once
 
-      ✓ should do nothing if its argument has the wrong format
-
-      ✓ should log event, payload, and message values if they exist for a `save` event
-
-      ✓ should log event, payload, and message values if they exist for an `error` event 
-    * `handleConnect` function
-
-      ✓ should log to the console once
-    * `handleClose` function
-
-      ✓ should log to the console once
-    * `handleClose` function
-
-      ✓ should log to the console once
-  * `read.test.js`
+  * `./lib/read.js`
     * `read` function
+      ✓ resolves when given a good file (2ms)
+      ✓ throws an error when given a bad file (1ms)
 
-      ✓ resolves when given a good file
-
-      ✓ throws an error when given a bad file
-
-  * `uppercase.test.js`
+  * `./lib/uppercase.js`
     * `uppercase` function
+      ✓ should transform its argument text to uppercase (1ms)
+      ✓ should accept and return a buffer (1ms)
 
-      ✓ should transform its argument text to uppercase
-
-      ✓ should accept and return a buffer
-  * `write.test.js`
+  * `./lib/write.js`
     * `write` function
-
-      ✓ resolves when given a good file
-
-      ✓ rejects when given a bad file
-
+      ✓ resolves when given a good file (1ms)
+      ✓ rejects when given a bad file (1ms)
       ✓ rejects when given bad data
 
 * What assertions need to be / should be made?
-Connection error handlers need testing.
-
-Some tests inadvertently trigger a TCP connection that results in an error if the server is offline.
-
-It has not been determined which tests are responsible.
-
-Additional integration testing might be done among the three main components of the project.
+Additional integration testing between `alterFile` and the Socket.io library might be performed.
 
 #### UML
 [uml diagram](./docs/assets/uml.jpg)
